@@ -4,6 +4,8 @@ import { redis } from "@/lib/redis";
 import { error } from "console";
 import { redirect } from "next/navigation";
 
+//Create Topic Logic
+
 export const createTopic = async ({ topicName }: { topicName: string }) => {
   const regex = /^[a-zA-Z-]+$/;
 
@@ -20,6 +22,8 @@ export const createTopic = async ({ topicName }: { topicName: string }) => {
   redirect(`/${topicName}`);
 };
 
+//word frequency checker function
+
 function wordFreq(text: string): { text: string; value: number }[] {
   const words: string[] = text.replace(/\./g, "").split(/\s/);
   const freqMap: Record<string, number> = {};
@@ -34,7 +38,8 @@ function wordFreq(text: string): { text: string; value: number }[] {
   }));
 }
 
-export const sunbmitComment = async ({
+//Comment submit logic
+export const submitComment = async ({
   comment,
   topicName,
 }: {

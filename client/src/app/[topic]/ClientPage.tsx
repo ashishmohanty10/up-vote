@@ -1,7 +1,7 @@
 "use client";
 
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Wordcloud } from "@visx/wordcloud";
 import { scaleLog } from "@visx/scale";
 import { Text } from "@visx/text";
@@ -9,7 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useMutation } from "@tanstack/react-query";
-import { sunbmitComment } from "../action";
+import { submitComment } from "../action";
+import { io } from "socket.io-client";
+
+const socket = io("http://localhost:8080");
 
 interface ClientPageProps {
   topicName: string;
@@ -18,9 +21,53 @@ interface ClientPageProps {
 
 const COLORS = ["#143059", "#2F6B9A", "#82a6c2"];
 
+//component starts here
+
 const ClientPage = ({ topicName, initialData }: ClientPageProps) => {
   const [words, setWords] = useState(initialData);
   const [input, setInput] = useState<string>("");
+
+  useEffect(() => {
+    socket.emit("join-room", `room:${topicName}`);
+  }, []);
+
+  useEffect(() => {
+    socket.on("room-update", (message: string) => {
+      const data = JSON.parse(message) as {
+        text: string;
+        value: number;
+      }[];
+
+      data.map((newWord) => {
+        const isWordAlreadyincluded = words.some(
+          (word) => word.text === newWord.text
+        );
+
+        if (isWordAlreadyincluded) {
+          //increment
+
+          setWords((prev) => {
+            const before = prev.find((word) => word.text === newWord.text);
+            const rest = prev.filter((word) => word.text !== newWord.text);
+
+            return [
+              ...rest,
+              { text: before!.text, value: before!.value + newWord.value },
+            ];
+          });
+        } else if (words.length < 50) {
+          //add to store
+
+          setWords((prev) => [...prev, newWord]);
+        }
+      });
+    });
+
+    return () => {
+      socket.off("room-update");
+    };
+  }, [words]);
+
   const fontScale = scaleLog({
     domain: [
       Math.min(...words.map((w) => w.value)),
@@ -30,7 +77,7 @@ const ClientPage = ({ topicName, initialData }: ClientPageProps) => {
   });
 
   const { mutate, isPending } = useMutation({
-    mutationFn: sunbmitComment,
+    mutationFn: submitComment,
   });
   return (
     <div className="w-full flex flex-col justify-center items-center min-h-screen bg-grid-zinc-50 pb-20">
